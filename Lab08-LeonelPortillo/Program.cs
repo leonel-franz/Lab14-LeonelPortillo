@@ -10,27 +10,33 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
-        options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+        options.JsonSerializerOptions.ReferenceHandler =
+            ReferenceHandler.IgnoreCycles;
     });
 
-// Swagger
+// Configuracion de Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Conexion a PostgreSQL y registro temporal de consultas SQL
-var connectionString = builder.Configuration.GetConnectionString("PostgresConnection");
+// Conexion a PostgreSQL
+var connectionString = builder.Configuration
+    .GetConnectionString("PostgresConnection");
 
 if (string.IsNullOrWhiteSpace(connectionString))
 {
     throw new InvalidOperationException(
-        "No se encontro la cadena de conexion 'PostgresConnection' en appsettings.json.");
+        "No se encontro la cadena de conexion 'PostgresConnection'.");
 }
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
     options.UseNpgsql(connectionString);
-    options.EnableDetailedErrors();
-    options.LogTo(Console.WriteLine, LogLevel.Information);
+    options.EnableDetailedErrors(builder.Environment.IsDevelopment());
+
+    if (builder.Environment.IsDevelopment())
+    {
+        options.LogTo(Console.WriteLine, LogLevel.Information);
+    }
 });
 
 // Repositorios
@@ -46,13 +52,11 @@ builder.Services.AddScoped<IOrderService, OrderService>();
 
 var app = builder.Build();
 
-// Swagger en desarrollo
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+// Habilitar Swagger en desarrollo y produccion
+app.UseSwagger();
+app.UseSwaggerUI();
 
+// Configuracion HTTP
 app.UseHttpsRedirection();
 
 app.UseAuthorization();
